@@ -174,7 +174,7 @@
         const statusEl = document.getElementById('status');
         const visualizerEl = document.getElementById('visualizer');
         const logEl = document.getElementById('conversation-log');
-        const openRouterApiKey = 'YOUR_OPENROUTER_API_KEY'; // IMPORTANT: Replace with your OpenRouter API key
+        const openRouterApiKey = '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'; // IMPORTANT: Replace with your OpenRouter API key
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
@@ -290,7 +290,7 @@
         }
         
         async function processCommand(command) {
-            if (openRouterApiKey === 'YOUR_OPENROUTER_API_KEY' || !openRouterApiKey) {
+            if (openRouterApiKey === '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' || !openRouterApiKey) {
                 speak("My connection to the network is not configured. Please set the OpenRouter API key.");
                 return;
             }
