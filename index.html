@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS X</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&display=swap');
+
+        :root {
+            --background-color: #0a0a0a;
+            --text-color: #00ff41;
+            --glow-color: rgba(0, 255, 65, 0.75);
+            --scanline-color: rgba(0, 255, 65, 0.1);
+            --border-color: #00ff41;
+            --error-color: #ff4d4d;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 15px var(--glow-color), 0 0 30px var(--glow-color) inset;
+            background-color: rgba(10, 10, 10, 0.8);
+            position: relative;
+            z-index: 1;
+        }
+
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                var(--scanline-color) 2px,
+                var(--scanline-color) 4px
+            );
+            animation: scanline-animation 15s linear infinite;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        @keyframes scanline-animation {
+            0% {
+                background-position-y: 0;
+            }
+            100% {
+                background-position-y: 100vh;
+            }
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            text-shadow: 0 0 5px var(--glow-color), 0 0 10px var(--glow-color);
+            animation: flicker 1.5s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% {
+                text-shadow:
+                    0 0 4px var(--glow-color),
+                    0 0 11px var(--glow-color),
+                    0 0 19px var(--glow-color),
+                    0 0 40px var(--text-color),
+                    0 0 80px var(--text-color),
+                    0 0 90px var(--text-color),
+                    0 0 100px var(--text-color),
+                    0 0 150px var(--text-color);
+            }
+            20%, 24%, 55% {
+                text-shadow: none;
+            }
+        }
+
+        .status-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 2rem 0;
+        }
+
+        .status-light {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #ff0000;
+            box-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+            transition: all 0.3s ease-in-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-shadow: 0 0 2px #000;
+        }
+
+        .status-light.listening {
+            background-color: #00ff00;
+            box-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00, 0 0 30px #00ff00;
+        }
+        
+        .status-light.speaking {
+            background-color: #00ffff;
+            box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+        }
+
+        .log-container {
+            margin-top: 2rem;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            font-size: 0.9rem;
+            background-color: rgba(0, 0, 0, 0.3);
+            scrollbar-width: thin;
+            scrollbar-color: var(--text-color) var(--background-color);
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-container::-webkit-scrollbar-track {
+            background: var(--background-color);
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background-color: var(--text-color);
+            border-radius: 4px;
+            border: 1px solid var(--background-color);
+        }
+
+        .log-container p {
+            margin: 0 0 0.5rem 0;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .log-container .user {
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        .log-container .jarvisx {
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        .log-container .system {
+            color: var(--error-color);
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="scanlines"></div>
+        <h1>JARVIS X</h1>
+        <div class="status-container">
+            <div id="status-light" class="status-light" title="Click to Activate/Deactivate">OFFLINE</div>
+        </div>
+        <div class="log-container" id="log-container">
+            <p><span class="jarvisx">JARVIS X:</span> System Initialized. Awaiting your command.</p>
+        </div>
+    </div>
+
+    <script>
+        const statusLight = document.getElementById('status-light');
+        const logContainer = document.getElementById('log-container');
+        const OPENROUTER_API_KEY = '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';
+        const openRouterApiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const synth = window.speechSynthesis;
+        
+        let recognition;
+        let isListening = false;
+        let voices = [];
+        let selectedVoice = null;
+        let wasListeningBeforeSpeaking = false;
+
+        if (!SpeechRecognition) {
+            logMessage('SYSTEM', 'Web Speech API for recognition is not supported in this browser. Please use Chrome or Edge.');
+        } else {
+             recognition = new SpeechRecognition();
+             recognition.continuous = false;
+             recognition.interimResults = false;
+             recognition.lang = 'en-US';
+        }
+       
+        function populateVoiceList() {
+            voices = synth.getVoices();
+            const voicePreferences = [
+                { lang: 'en-IN', nameIncludes: 'Google' },
+                { lang: 'en-US', nameIncludes: 'Google' },
+                { lang: 'en-US', nameIncludes: 'David' },
+                { lang: 'en-GB', nameIncludes: 'Google' },
+                { lang: 'en-IN' },
+                { lang: 'en-US' }
+            ];
+
+            for (const pref of voicePreferences) {
+                selectedVoice = voices.find(voice =>
+                    voice.lang === pref.lang &&
+                    (pref.nameIncludes ? voice.name.includes(pref.nameIncludes) : true) &&
+                    !voice.name.toLowerCase().includes('female')
+                );
+                if (selectedVoice) break;
+            }
+            if (!selectedVoice) {
+                selectedVoice = voices.find(voice => voice.lang.startsWith('en-') && !voice.name.toLowerCase().includes('female'));
+            }
+            console.log("Selected voice:", selectedVoice ? selectedVoice.name : "None");
+        }
+
+        // Voices load asynchronously. This is the reliable way to get them.
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = populateVoiceList;
+        }
+        populateVoiceList();
+
+        function toggleListening() {
+            if (!recognition) return;
+            if (isListening) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error("Recognition could not be started:", e);
+                    logMessage('SYSTEM', `Could not start listening: ${e.message}`);
+                }
+            }
+        }
+        statusLight.addEventListener('click', toggleListening);
+
+        if (recognition) {
+            recognition.onstart = () => {
+                isListening = true;
+                statusLight.classList.add('listening');
+                statusLight.classList.remove('speaking');
+                statusLight.textContent = 'LISTENING';
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                if (!synth.speaking) {
+                    statusLight.classList.remove('listening');
+                    statusLight.textContent = 'OFFLINE';
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                logMessage('SYSTEM', `Recognition error: ${event.error}`);
+                isListening = false;
+                statusLight.classList.remove('listening');
+                statusLight.textContent = 'ERROR';
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                if (transcript) {
+                    logMessage('User', transcript);
+                    processCommand(transcript);
+                }
+            };
+        }
+
+        async function processCommand(command) {
+            try {
+                const response = await fetch(openRouterApiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': `${window.location.protocol}//${window.location.host}`,
+                        'X-Title': 'JARVIS X'
+                    },
+                    body: JSON.stringify({
+                        model: "mistralai/mistral-7b-instruct:free",
+                        messages: [
+                            { role: "system", content: "You are Jarvis X. You speak like a calm, intelligent human assistant. No robotic phrases. No repeating words. Short, confident replies. Be concise." },
+                            { role: "user", content: command }
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Error: ${errorData.error.message || response.statusText}`);
+                }
+
+                const data = await response.json();
+                const reply = data.choices[0].message.content;
+                logMessage('JARVIS X', reply);
+                speak(reply);
+            } catch (error) {
+                console.error('Error with OpenRouter API:', error);
+                const errorMessage = `My apologies, I am having trouble connecting to my network. ${error.message}`;
+                logMessage('SYSTEM', errorMessage);
+                speak("I'm experiencing a network issue. Please try again later.");
+            }
+        }
+
+        function speak(text) {
+            if (!text || typeof text !== 'string') {
+                 console.error("Speak function called with invalid text.");
+                 return;
+            }
+            // Ensure voices are loaded, especially on first run.
+            if (voices.length === 0) {
+                populateVoiceList();
+            }
+            if (synth.speaking) {
+                synth.cancel();
+            }
+
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                utterance.voice = selectedVoice;
+                utterance.pitch = 0.9;
+                utterance.rate = 1.0;
+
+                utterance.onstart = () => {
+                    console.log("Speech started...");
+                    wasListeningBeforeSpeaking = isListening;
+                    if(isListening) {
+                        recognition.stop();
+                    }
+                    statusLight.classList.add('speaking');
+                    statusLight.classList.remove('listening');
+                    statusLight.textContent = 'SPEAKING';
+                };
+
+                utterance.onend = () => {
+                    console.log("Speech ended.");
+                    statusLight.classList.remove('speaking');
+                    if (wasListeningBeforeSpeaking) {
+                        recognition.start();
+                    } else {
+                        statusLight.textContent = 'OFFLINE';
+                    }
+                };
+
+                utterance.onerror = (event) => {
+                    console.error('SpeechSynthesisUtterance error:', event.error);
+                    logMessage('SYSTEM', `Speech synthesis error: ${event.error}`);
+                    statusLight.classList.remove('speaking');
+                    statusLight.textContent = 'ERROR';
+                };
+                
+                synth.speak(utterance);
+            }, 300);
+        }
+
+        function logMessage(sender, message) {
+            const p = document.createElement('p');
+            const senderSpan = document.createElement('span');
+            senderSpan.className = sender.toLowerCase().replace(/[\sX]/g, '');
+            senderSpan.textContent = `${sender}: `;
+            p.appendChild(senderSpan);
+            p.appendChild(document.createTextNode(message));
+            logContainer.appendChild(p);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+    </script>
+</body>
+  </html>
